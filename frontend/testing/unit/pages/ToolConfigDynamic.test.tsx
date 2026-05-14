@@ -33,7 +33,13 @@ describe('ToolConfig dynamic schema flow', () => {
           icon: '🌐',
           requires_consent: true,
           consent_message: 'Explicit authorization required',
-          availability: { runnable: false, missing_binaries: ['subfinder'] },
+          availability: {
+            runnable: false,
+            missing_binaries: ['subfinder'],
+            status: 'unavailable',
+            guidance:
+              'Unavailable: Requires external binaries (subfinder). Install required tools locally to enable this scanner.',
+          },
         },
       ],
     })
@@ -81,7 +87,9 @@ describe('ToolConfig dynamic schema flow', () => {
     )
 
     await screen.findByText(/Subdomain Discovery/i)
-    expect(screen.getByText(/Missing local binaries: subfinder/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Install required tools locally/i)
+    ).toBeInTheDocument()
     expect(screen.getByPlaceholderText('example.com')).toBeInTheDocument()
     expect(screen.getByDisplayValue('10')).toBeInTheDocument()
     await user.type(screen.getByPlaceholderText('example.com'), 'example.com')
