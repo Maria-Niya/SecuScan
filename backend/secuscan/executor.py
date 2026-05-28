@@ -420,9 +420,8 @@ class TaskExecutor:
                 task_id=task_id
             )
         finally:
-            # Always runs regardless of success, failure, or cancellation.
-            # Remove from in-memory registry and release the concurrency slot
-            # so future tasks are not permanently blocked.
+            # Always clean up: remove from the in-memory registry and
+            # release the concurrency slot regardless of how the task ended.
             self.running_tasks.pop(task_id, None)
             await concurrent_limiter.release(task_id)
     
@@ -755,6 +754,12 @@ class TaskExecutor:
         parser_path = plugin_dir / "parser.py"
         
         if parser_path.exists():
+            if not plugin_manager.verify_parser_at_exec_time(plugin, plugin_dir):
+                raise ValueError(
+                    f"Security error: parser.py integrity check failed for plugin {plugin.id!r}; "
+                    "the file may have been tampered with. Rotate the plugin checksum or "
+                    "reinstall the plugin before retrying."
+                )
             try:
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(f"parser_{plugin.id}", parser_path)
@@ -769,6 +774,8 @@ class TaskExecutor:
                             return self._normalize_parsed_result(plugin, parser_input, parsed)
                         else:
                             logger.warning(f"Custom parser {parser_path} missing 'parse' function")
+            except ValueError:
+                raise
             except Exception as e:
                 logger.error(f"Error executing custom parser for {plugin.id}: {e}")
 
